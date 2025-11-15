@@ -5,3 +5,6 @@
 	path = vendor/s2sdk
 	url = https://github.com/swiftly-solution/s2sdk
 	branch = cs2
+[submodule "vendor/crashpad"]
+	path = vendor/crashpad
+	url = https://chromium.googlesource.com/crashpad/crashpad.git
