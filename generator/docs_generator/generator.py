@@ -2,26 +2,38 @@ import os
 import re
 import yaml
 
+
 SOURCE_DIR = "../../api"
 DEST_DIR = "../../docs"
+
+
 os.makedirs(DEST_DIR, exist_ok=True)
 
+
 def escape_generics(text):
+    """Escape < and > in generic types for MDX compatibility."""
     if not text:
         return text
     return text.replace('<', '&lt;').replace('>', '&gt;')
 
+
 def fix_html_for_jsx(text):
+    """Fix HTML attributes for JSX compatibility."""
     if not text:
         return text
+    # Replace class= with className=
     return text.replace('class=', 'className=')
 
+
 def escape_generics_in_link_text(text):
+    """Escape generics in markdown link text only."""
     if not text:
         return text
     return text.replace('<', '\\<').replace('>', '\\>')
 
+
 def get_namespace(yaml_data):
+    """Extract namespace from the YAML data."""
     for item in yaml_data.get('body', []):
         if 'facts' in item:
             for fact in item['facts']:
@@ -31,39 +43,51 @@ def get_namespace(yaml_data):
                     return fact.get('value', '')
     return ''
 
+
 def extract_metadata(yaml_data, is_index=False):
+    """Extract front-matter metadata from DocFX ApiPage YAML."""
     title = yaml_data.get('title', '')
     if not title:
         return {}
 
-    if is_index:
-        clean_title = title.split(".")[-1]
-    else:
-        words = title.split()
-        clean_title = words[-1] if words else ''
-
-    clean_title = re.sub(r'<[^>]+>', '', clean_title)
+    # First remove generics and brackets from the full title
+    clean_title = re.sub(r'<[^>]+>', '', title)
     clean_title = re.sub(r'\[[^\]]+\]', '', clean_title)
+
+    if is_index:
+        clean_title = clean_title.split(".")[-1]
+    else:
+        words = clean_title.split()
+        clean_title = words[-1] if words else ''
 
     return {'title': clean_title}
 
-def convert_to_path(s):
-    if s.lower().endswith(".html"):
-        s = s[:-5]
 
+def convert_to_path(s):
+    """Convert DocFX URL to site path."""
+    if s.lower().endswith(".html"):
+        s = s[:-5]  # Remove .html first
+    
+    # Remove prefixes in order of specificity
     for prefix in ["SwiftlyS2.Core.", "SwiftlyS2.Shared.", "SwiftlyS2."]:
         if s.startswith(prefix):
             s = s[len(prefix):]
             break
     
     path = "/".join(s.split(".")).lower()
-
+    
+    # Transform -NUMBER to t repeated NUMBER times
     parts = path.split("/")
     parts[-1] = transform_filename(parts[-1])
     path = "/".join(parts)
     return path
 
+
 def transform_filename(base_name):
+    """
+    If filename ends with -NUMBER, replace with NUMBER times 't'.
+    Example: class-3 -> classttt
+    """
     match = re.match(r"^(.*?)-(\d+)$", base_name)
     if match:
         name, num = match.groups()
@@ -71,7 +95,9 @@ def transform_filename(base_name):
         return name + ("t" * num)
     return base_name
 
+
 def format_type_link(type_info):
+    """Format type information as ApiParam component."""
     if isinstance(type_info, list):
         parts = []
         for t in type_info:
@@ -94,7 +120,9 @@ def format_type_link(type_info):
         return text, url
     return str(type_info), ''
 
+
 def generate_markdown(yaml_data):
+    """Generate MDX content from DocFX ApiPage YAML."""
     md = ""
     namespace = get_namespace(yaml_data)
     
@@ -201,7 +229,9 @@ def generate_markdown(yaml_data):
             if src != '':
                 src = src.replace('/blob/main', '/blob/master')
                 md += f'<ViewSource href="{src}" />\n\n'
+    
     return md
+
 
 def convert_yaml_file(src_path, dest_path):
     with open(src_path, 'r', encoding='utf-8') as f:
@@ -243,6 +273,7 @@ for root, dirs, files in os.walk(SOURCE_DIR):
     for file in files:
         if file.endswith(".yml") or file.endswith(".yaml"):
             raw_base = os.path.splitext(file)[0]
+            # Remove Core and Shared from path
             for prefix in ["SwiftlyS2.Core.", "SwiftlyS2.Shared.", "SwiftlyS2."]:
                 if raw_base.startswith(prefix):
                     raw_base = raw_base[len(prefix):]
@@ -250,5 +281,6 @@ for root, dirs, files in os.walk(SOURCE_DIR):
             new_base = transform_filename(raw_base)
             dest_file = os.path.join(DEST_DIR, "/".join(new_base.split(".")).lower() + ".mdx")
             convert_yaml_file(os.path.join(root, file), dest_file)
+
 
 print("MDX generation complete!")
