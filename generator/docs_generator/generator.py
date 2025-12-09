@@ -326,7 +326,8 @@ def generate_markdown(yaml_data):
         if 'api3' in item:
             src = item.get('src', '')
             api3_title = str(item.get('api3', ''))
-            api3_title = re.sub(r'<[^>]+>', '', api3_title)
+            # Escape generics for markdown heading (use backslash)
+            api3_title = api3_title.replace('<', '\\<').replace('>', '\\>')
             api3_title = re.sub(r'\[[^\]]+\]', '', api3_title)
             md += f"### {api3_title}\n\n"
             if src != '':
@@ -370,6 +371,8 @@ def convert_yaml_file(src_path, dest_path):
 
     md_content = md_content.replace('/api/shared', '/api').replace('/api/core', '/api')
     md_content = convert_xref_tags(md_content)
+    # Escape < followed by numbers (like <1000) which MDX interprets as JSX tags
+    md_content = re.sub(r'<(\d)', r'\\<\1', md_content)
 
     with open(final_path, 'w', encoding='utf-8') as f:
         f.write(md_content)
