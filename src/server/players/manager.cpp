@@ -39,6 +39,8 @@ public:
 #endif
 };
 
+std::map<uint64_t, bool> g_mSteamAuthorizedCacheMap;
+
 IFunctionHook* g_pProcessUserCmdsHook = nullptr;
 IVFunctionHook* g_pOnGameFramePlayerHook = nullptr;
 
@@ -60,7 +62,7 @@ void CheckTransmitHook(void* _this, CCheckTransmitInfo** ppInfoList, int infoCou
 
 void CPlayerManager::Initialize()
 {
-    g_Players = new CPlayer*[g_SwiftlyCore.GetMaxGameClients()];
+    g_Players = new CPlayer * [g_SwiftlyCore.GetMaxGameClients()];
     for (int i = 0; i < g_SwiftlyCore.GetMaxGameClients(); i++)
     {
         g_Players[i] = nullptr;
@@ -178,6 +180,12 @@ void OnClientPutInServerHook(void* _this, CPlayerSlot slot, char const* pszName,
 {
     reinterpret_cast<decltype(&OnClientPutInServerHook)>(g_pClientPutInServerHook->GetOriginal())(_this, slot, pszName, type, xuid);
 
+    if (type == 0)
+    {
+        auto cvarmanager = g_ifaceService.FetchInterface<IConvarManager>(CONVARMANAGER_INTERFACE_VERSION);
+        cvarmanager->QueryClientConvar(slot.Get(), "cl_language");
+    }
+
     if (g_pOnClientPutInServerCallback)
         reinterpret_cast<void (*)(int, int)>(g_pOnClientPutInServerCallback)(slot.Get(), type);
 }
@@ -188,7 +196,7 @@ void* ProcessUsercmdsHook(void* pController, CUserCmd* cmds, int numcmds, bool p
 {
     auto playerid = ((CEntityInstance*)pController)->m_pEntity->m_EHandle.GetEntryIndex() - 1;
 
-    google::protobuf::Message** pMsg = new google::protobuf::Message*[numcmds];
+    google::protobuf::Message** pMsg = new google::protobuf::Message * [numcmds];
     for (int i = 0; i < numcmds; i++)
         pMsg[i] = (google::protobuf::Message*)&cmds[i].cmd;
 
@@ -286,6 +294,12 @@ bool ClientConnectHook(void* _this, CPlayerSlot slot, const char* pszName, uint6
     }
 
     player->SetUnauthorizedSteamID(xuid);
+    player->SetFakeClient(xuid == 0);
+
+    if (g_mSteamAuthorizedCacheMap.find(player->GetUnauthorizedSteamID()) != g_mSteamAuthorizedCacheMap.end())
+    {
+        player->ChangeAuthorizationState(g_mSteamAuthorizedCacheMap[player->GetUnauthorizedSteamID()]);
+    }
 
     if (g_pOnClientConnectCallback)
     {
@@ -305,13 +319,9 @@ void OnClientConnectedHook(void* _this, CPlayerSlot slot, const char* pszName, u
     auto playerid = slot.Get();
     if (bFakePlayer)
     {
-        playermanager->RegisterPlayer(playerid);
+        auto player = playermanager->RegisterPlayer(playerid);
+        player->SetFakeClient(true);
         // player->Initialize(playerid);
-    }
-    else
-    {
-        auto cvarmanager = g_ifaceService.FetchInterface<IConvarManager>(CONVARMANAGER_INTERFACE_VERSION);
-        cvarmanager->QueryClientConvar(playerid, "cl_language");
     }
 
     reinterpret_cast<decltype(&OnClientConnectedHook)>(g_pOnClientConnectedHook->GetOriginal())(_this, slot, pszName, xuid, pszNetworkID, pszAddress, bFakePlayer);
@@ -427,6 +437,7 @@ void CPlayerManager::OnValidateAuthTicket(ValidateAuthTicketResponse_t* response
             continue;
 
         player->ChangeAuthorizationState(response->m_eAuthSessionResponse == k_EAuthSessionResponseOK);
+        g_mSteamAuthorizedCacheMap[steamid] = (response->m_eAuthSessionResponse == k_EAuthSessionResponseOK);
         break;
     }
 }
