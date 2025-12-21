@@ -20,6 +20,7 @@ internal class EntitySystemService : IEntitySystemService, IDisposable
     private readonly IContextedProfilerService profiler;
     private readonly IEventSubscriber eventSubscriber;
 
+    [Obsolete("Use outputHooks instead.")]
     private readonly ConcurrentDictionary<Guid, EntityOutputHookCallback> outputCallbacks = new();
     private readonly ConcurrentDictionary<Guid, EventDelegates.OnEntityFireOutputHookEvent> outputHooks = new();
 
