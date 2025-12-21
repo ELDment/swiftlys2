@@ -1,8 +1,8 @@
 namespace SwiftlyS2.Shared.EntitySystem;
 
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
-public class EntityOutputHandlerAttribute( string designerName, string outputName ) : Attribute
+public class EntityInputHandlerAttribute( string designerName, string inputName ) : Attribute
 {
     public string DesignerName { get; set; } = designerName;
-    public string OutputName { get; set; } = outputName;
+    public string InputName { get; set; } = inputName;
 }
