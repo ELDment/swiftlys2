@@ -1,5 +1,8 @@
+
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Core.Natives;
+using SwiftlyS2.Shared.Events;
 using SwiftlyS2.Shared.Natives;
 using SwiftlyS2.Shared.Schemas;
 using SwiftlyS2.Core.Extensions;
@@ -8,22 +11,26 @@ using SwiftlyS2.Core.NetMessages;
 using SwiftlyS2.Shared.EntitySystem;
 using SwiftlyS2.Core.SchemaDefinitions;
 using SwiftlyS2.Shared.SchemaDefinitions;
-using SwiftlyS2.Shared.Events;
 
 namespace SwiftlyS2.Core.EntitySystem;
 
 internal class EntitySystemService : IEntitySystemService, IDisposable
 {
-    private readonly List<EntityOutputHookCallback> callbacks = [];
-    private readonly Lock callbacksLock = new();
     private readonly ILoggerFactory loggerFactory;
     private readonly IContextedProfilerService profiler;
     private readonly IEventSubscriber eventSubscriber;
+
+    private readonly ConcurrentDictionary<Guid, EntityOutputHookCallback> outputCallbacks = new();
+    private readonly ConcurrentDictionary<Guid, EventDelegates.OnEntityFireOutputHookEvent> outputHooks = new();
+
+    private volatile bool disposed;
+
     public EntitySystemService( IEventSubscriber eventSubscriber, ILoggerFactory loggerFactory, IContextedProfilerService profiler )
     {
         this.loggerFactory = loggerFactory;
         this.profiler = profiler;
         this.eventSubscriber = eventSubscriber;
+        this.disposed = false;
     }
 
     public T CreateEntity<T>() where T : class, ISchemaClass<T>
@@ -43,9 +50,7 @@ internal class EntitySystemService : IEntitySystemService, IDisposable
 
     public CHandle<T> GetRefEHandle<T>( T entity ) where T : class, ISchemaClass<T>
     {
-        return new CHandle<T> {
-            Raw = NativeEntitySystem.GetEntityHandleFromEntity(entity.Address),
-        };
+        return new CHandle<T> { Raw = NativeEntitySystem.GetEntityHandleFromEntity(entity.Address) };
     }
 
     public CCSGameRules? GetGameRules()
@@ -58,9 +63,10 @@ internal class EntitySystemService : IEntitySystemService, IDisposable
     {
         CEntityIdentity? pFirst = new CEntityIdentityImpl(NativeEntitySystem.GetFirstActiveEntity());
 
-        for (; pFirst != null && pFirst.IsValid; pFirst = pFirst.Next)
+        while (pFirst != null && pFirst.IsValid)
         {
             yield return new CEntityInstanceImpl(pFirst.Address.Read<nint>());
+            pFirst = pFirst.Next;
         }
     }
 
@@ -88,14 +94,11 @@ internal class EntitySystemService : IEntitySystemService, IDisposable
     public Guid HookEntityOutput<T>( string outputName, IEntitySystemService.EntityOutputHandler callback ) where T : class, ISchemaClass<T>
     {
         var hook = new EntityOutputHookCallback(T.ClassName ?? throw new ArgumentException($"Can't hook entity output with class {typeof(T).Name}, which doesn't have a designer name"), outputName, callback, loggerFactory, profiler);
-        lock (callbacksLock)
-        {
-            callbacks.Add(hook);
-        }
+        _ = outputCallbacks.TryAdd(hook.Guid, hook);
         return hook.Guid;
     }
 
-    public void HookEntityOutput<T>( string outputName, IEntitySystemService.EntityOutputEventHandler callback ) where T : class, ISchemaClass<T>
+    public Guid HookEntityOutput<T>( string outputName, IEntitySystemService.EntityOutputEventHandler callback ) where T : class, ISchemaClass<T>
     {
         if (T.ClassName == null)
         {
@@ -105,19 +108,27 @@ internal class EntitySystemService : IEntitySystemService, IDisposable
         {
             throw new ArgumentException("Output name cannot be null or empty.");
         }
-        eventSubscriber.OnEntityFireOutputHook += ( @event ) =>
+
+        var className = T.ClassName;
+        void handler( IOnEntityFireOutputHookEvent @event )
         {
             if (outputName == "*" || outputName == @event.OutputName)
             {
-                if (@event.DesignerName == T.ClassName)
+                if (@event.DesignerName == className)
                 {
                     callback(@event);
                 }
             }
-        };
+        }
+
+        var guid = Guid.NewGuid();
+        _ = outputHooks.TryAdd(guid, handler);
+        eventSubscriber.OnEntityFireOutputHook += handler;
+
+        return guid;
     }
 
-    public void HookEntityOutput( string designerName, string outputName, IEntitySystemService.EntityOutputEventHandler callback )
+    public Guid HookEntityOutput( string designerName, string outputName, IEntitySystemService.EntityOutputEventHandler callback )
     {
         if (string.IsNullOrWhiteSpace(designerName))
         {
@@ -127,7 +138,8 @@ internal class EntitySystemService : IEntitySystemService, IDisposable
         {
             throw new ArgumentException("Output name cannot be null or empty.");
         }
-        @eventSubscriber.OnEntityFireOutputHook += ( @event ) =>
+
+        void handler( IOnEntityFireOutputHookEvent @event )
         {
             if (outputName == "*" || outputName == @event.OutputName)
             {
@@ -136,35 +148,55 @@ internal class EntitySystemService : IEntitySystemService, IDisposable
                     callback(@event);
                 }
             }
-        };
+        }
+
+        var guid = Guid.NewGuid();
+        _ = outputHooks.TryAdd(guid, handler);
+        eventSubscriber.OnEntityFireOutputHook += handler;
+
+        return guid;
     }
 
-    [Obsolete("This method is deprecated.")]
-    public void UnhookEntityOutput( Guid guid )
+    public bool UnhookEntityOutput( Guid guid )
     {
-        lock (callbacksLock)
+        if (outputCallbacks.TryRemove(guid, out var callback))
         {
-            _ = callbacks.RemoveAll(callback =>
-            {
-                if (callback.Guid == guid)
-                {
-                    callback.Dispose();
-                    return true;
-                }
-                return false;
-            });
+            callback.Dispose();
+            return true;
         }
+        else if (outputHooks.TryRemove(guid, out var handler))
+        {
+            eventSubscriber.OnEntityFireOutputHook -= handler;
+            return true;
+        }
+        return false;
     }
 
     public void Dispose()
     {
-        lock (callbacksLock)
+        if (disposed)
         {
-            foreach (var callback in callbacks)
-            {
-                callback.Dispose();
-            }
-            callbacks.Clear();
+            return;
         }
+        disposed = true;
+
+        foreach (var callback in outputCallbacks.Values)
+        {
+            callback.Dispose();
+        }
+        outputCallbacks.Clear();
+
+        foreach (var handler in outputHooks.Values)
+        {
+            eventSubscriber.OnEntityFireOutputHook -= handler;
+        }
+        outputHooks.Clear();
+
+        GC.SuppressFinalize(this);
+    }
+
+    ~EntitySystemService()
+    {
+        Dispose();
     }
 }

@@ -19,7 +19,6 @@ public interface IEntitySystemService
     /// <param name="delay">The delay, in seconds, before the output is executed.</param>
     /// <returns>A <see cref="HookResult"/> value indicating the result of the handler's execution,  such as whether the output
     /// should proceed or be blocked.</returns>
-    
     [Obsolete("Use HookEntityOutput(string designerName, string outputName, Action<IOnEntityFireOutputHookEvent> callback) instead.")]
     public delegate HookResult EntityOutputHandler( CEntityIOOutput entityIO, string outputName, CEntityInstance activator, CEntityInstance caller, float delay );
 
@@ -98,7 +97,8 @@ public interface IEntitySystemService
     /// <typeparam name="T">The type of the entity, which must implement <see cref="ISchemaClass{T}"/>.</typeparam>
     /// <param name="outputName">The name of the output to hook. This value cannot be <see langword="null"/> or empty.</param>
     /// <param name="callback">The callback function to invoke when the output is triggered. This value cannot be <see langword="null"/>.</param>
-    public void HookEntityOutput<T>( string outputName, EntityOutputEventHandler callback ) where T : class, ISchemaClass<T>;
+    /// <returns>A <see cref="Guid"/> that uniquely identifies the hook. This identifier can be used to remove the hook.</returns>
+    public Guid HookEntityOutput<T>( string outputName, EntityOutputEventHandler callback ) where T : class, ISchemaClass<T>;
 
     /// <summary>
     /// Hooks an output of the specified entity type to a callback function.
@@ -108,7 +108,8 @@ public interface IEntitySystemService
     /// <param name="designerName">The designer name of the entity to hook. This value cannot be <see langword="null"/> or empty.</param>
     /// <param name="outputName">The name of the output to hook. This value cannot be <see langword="null"/> or empty.</param>
     /// <param name="callback">The callback function to invoke when the output is triggered. This value cannot be <see langword="null"/>.</param>
-    public void HookEntityOutput( string designerName, string outputName, EntityOutputEventHandler callback );
+    /// <returns>A <see cref="Guid"/> that uniquely identifies the hook. This identifier can be used to remove the hook.</returns>
+    public Guid HookEntityOutput( string designerName, string outputName, EntityOutputEventHandler callback );
 
     /// <summary>
     /// Hooks an output of the specified entity type to a callback function.
@@ -126,6 +127,6 @@ public interface IEntitySystemService
     /// Removes the association between the specified entity output and its handler.
     /// </summary>
     /// <param name="guid">The unique identifier of the entity output to unhook.</param>
-    [Obsolete("This method is deprecated.")]
-    public void UnhookEntityOutput( Guid guid );
+    /// <returns><see langword="true"/> if the hook was successfully removed; otherwise, <see langword="false"/>.</returns>
+    public bool UnhookEntityOutput( Guid guid );
 }
