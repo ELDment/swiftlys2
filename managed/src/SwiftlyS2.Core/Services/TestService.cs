@@ -81,17 +81,29 @@ internal class TestService
         Console.WriteLine(variant.ToString());
     }
 
-    [EntityOutputHandler("*", "*")]
+    // [EntityOutputHandler("*", "*")]
+    // public void Test3( IOnEntityFireOutputHookEvent @event )
+    // {
+    //     Console.WriteLine("MFMFMFMFMFMFMFMFMF");
+    //     Console.WriteLine($"HookEntityOutput -> designerName: {@event.DesignerName} output: {@event.OutputName}, activator: {@event.Activator?.As<CBaseEntity>()?.DesignerName}, caller: {@event.Caller?.As<CBaseEntity>()?.DesignerName}, value: {@event.VariantValue}, delay: {@event.Delay}");
+    // }
+
+    // [EntityInputHandler("*", "*")]
+    // public void Test4( IOnEntityIdentityAcceptInputHookEvent @event )
+    // {
+    //     Console.WriteLine("FMFMFMFMFMFMFMFMFM");
+    //     Console.WriteLine($"HookEntityInput -> designerName: {@event.DesignerName} output: {@event.InputName}, activator: {@event.Activator?.As<CBaseEntity>()?.DesignerName}, caller: {@event.Caller?.As<CBaseEntity>()?.DesignerName}, value: {@event.VariantValue}");
+    // }
+
+    [EntityOutputHandler<CPropDoorRotating>("*")]
     public void Test3( IOnEntityFireOutputHookEvent @event )
     {
-        Console.WriteLine("MFMFMFMFMFMFMFMFMF");
         Console.WriteLine($"HookEntityOutput -> designerName: {@event.DesignerName} output: {@event.OutputName}, activator: {@event.Activator?.As<CBaseEntity>()?.DesignerName}, caller: {@event.Caller?.As<CBaseEntity>()?.DesignerName}, value: {@event.VariantValue}, delay: {@event.Delay}");
     }
 
-    [EntityInputHandler("*", "*")]
+    [EntityInputHandler<CCSPlayerPawn>("*")]
     public void Test4( IOnEntityIdentityAcceptInputHookEvent @event )
     {
-        Console.WriteLine("FMFMFMFMFMFMFMFMFM");
         Console.WriteLine($"HookEntityInput -> designerName: {@event.DesignerName} output: {@event.InputName}, activator: {@event.Activator?.As<CBaseEntity>()?.DesignerName}, caller: {@event.Caller?.As<CBaseEntity>()?.DesignerName}, value: {@event.VariantValue}");
     }
 }

@@ -3,7 +3,7 @@ using SwiftlyS2.Shared.EntitySystem;
 
 namespace SwiftlyS2.Core.AttributeParsers;
 
-internal static class EntityInputAttributeParser
+internal static class EntityIOAttributeParser
 {
     public static void ParseFromObject( this IEntitySystemService self, object instance )
     {
