@@ -126,7 +126,7 @@ internal class CoreHookService : IDisposable
                     var @event = new OnEntityIdentityAcceptInputHookEvent {
                         Identity = entityIdentity,
                         EntityInstance = entityIdentity.EntityInstance,
-                        DesignerName = caller?.DesignerName ?? string.Empty,
+                        DesignerName = entityIdentity?.DesignerName ?? string.Empty,
                         InputName = inputName.Value,
                         Activator = activator,
                         Caller = caller,
