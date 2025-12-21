@@ -23,6 +23,7 @@ internal class EntitySystemService : IEntitySystemService, IDisposable
     [Obsolete("Use outputHooks instead.")]
     private readonly ConcurrentDictionary<Guid, EntityOutputHookCallback> outputCallbacks = new();
     private readonly ConcurrentDictionary<Guid, EventDelegates.OnEntityFireOutputHookEvent> outputHooks = new();
+    private readonly ConcurrentDictionary<Guid, EventDelegates.OnEntityIdentityAcceptInputHook> inputHooks = new();
 
     private volatile bool disposed;
 
@@ -111,11 +112,12 @@ internal class EntitySystemService : IEntitySystemService, IDisposable
         }
 
         var className = T.ClassName;
+        outputName = outputName.Trim();
         void handler( IOnEntityFireOutputHookEvent @event )
         {
-            if (outputName == "*" || outputName == @event.OutputName)
+            if (outputName == "*" || outputName.Equals(@event.OutputName, StringComparison.OrdinalIgnoreCase))
             {
-                if (@event.DesignerName == className)
+                if (@event.DesignerName.Equals(className, StringComparison.OrdinalIgnoreCase))
                 {
                     callback(@event);
                 }
@@ -140,11 +142,13 @@ internal class EntitySystemService : IEntitySystemService, IDisposable
             throw new ArgumentException("Output name cannot be null or empty.");
         }
 
+        designerName = designerName.Trim();
+        outputName = outputName.Trim();
         void handler( IOnEntityFireOutputHookEvent @event )
         {
-            if (outputName == "*" || outputName == @event.OutputName)
+            if (outputName == "*" || outputName.Equals(@event.OutputName, StringComparison.OrdinalIgnoreCase))
             {
-                if (designerName == "*" || @event.DesignerName == designerName)
+                if (designerName == "*" || @event.DesignerName.Equals(designerName, StringComparison.OrdinalIgnoreCase))
                 {
                     callback(@event);
                 }
@@ -154,6 +158,68 @@ internal class EntitySystemService : IEntitySystemService, IDisposable
         var guid = Guid.NewGuid();
         _ = outputHooks.TryAdd(guid, handler);
         eventSubscriber.OnEntityFireOutputHook += handler;
+
+        return guid;
+    }
+
+    public Guid HookEntityInput<T>( string inputName, IEntitySystemService.EntityInputEventHandler callback ) where T : class, ISchemaClass<T>
+    {
+        if (T.ClassName == null)
+        {
+            throw new ArgumentException($"Can't hook entity input with class {typeof(T).Name}, which doesn't have a designer name.");
+        }
+        if (string.IsNullOrWhiteSpace(inputName))
+        {
+            throw new ArgumentException("Input name cannot be null or empty.");
+        }
+
+        var className = T.ClassName;
+        inputName = inputName.Trim();
+        void handler( IOnEntityIdentityAcceptInputHookEvent @event )
+        {
+            if (inputName == "*" || inputName.Equals(@event.InputName, StringComparison.OrdinalIgnoreCase))
+            {
+                if (@event.DesignerName.Equals(className, StringComparison.OrdinalIgnoreCase))
+                {
+                    callback(@event);
+                }
+            }
+        }
+
+        var guid = Guid.NewGuid();
+        _ = inputHooks.TryAdd(guid, handler);
+        eventSubscriber.OnEntityIdentityAcceptInputHook += handler;
+
+        return guid;
+    }
+
+    public Guid HookEntityInput( string designerName, string inputName, IEntitySystemService.EntityInputEventHandler callback )
+    {
+        if (string.IsNullOrWhiteSpace(designerName))
+        {
+            throw new ArgumentException("Designer name cannot be null or empty.");
+        }
+        if (string.IsNullOrWhiteSpace(inputName))
+        {
+            throw new ArgumentException("Input name cannot be null or empty.");
+        }
+
+        designerName = designerName.Trim();
+        inputName = inputName.Trim();
+        void handler( IOnEntityIdentityAcceptInputHookEvent @event )
+        {
+            if (inputName == "*" || inputName.Equals(@event.InputName, StringComparison.OrdinalIgnoreCase))
+            {
+                if (designerName == "*" || @event.DesignerName.Equals(designerName, StringComparison.OrdinalIgnoreCase))
+                {
+                    callback(@event);
+                }
+            }
+        }
+
+        var guid = Guid.NewGuid();
+        _ = inputHooks.TryAdd(guid, handler);
+        eventSubscriber.OnEntityIdentityAcceptInputHook += handler;
 
         return guid;
     }
@@ -168,6 +234,16 @@ internal class EntitySystemService : IEntitySystemService, IDisposable
         else if (outputHooks.TryRemove(guid, out var handler))
         {
             eventSubscriber.OnEntityFireOutputHook -= handler;
+            return true;
+        }
+        return false;
+    }
+
+    public bool UnhookEntityInput( Guid guid )
+    {
+        if (inputHooks.TryRemove(guid, out var handler))
+        {
+            eventSubscriber.OnEntityIdentityAcceptInputHook -= handler;
             return true;
         }
         return false;
@@ -192,6 +268,12 @@ internal class EntitySystemService : IEntitySystemService, IDisposable
             eventSubscriber.OnEntityFireOutputHook -= handler;
         }
         outputHooks.Clear();
+
+        foreach (var handler in inputHooks.Values)
+        {
+            eventSubscriber.OnEntityIdentityAcceptInputHook -= handler;
+        }
+        inputHooks.Clear();
 
         GC.SuppressFinalize(this);
     }

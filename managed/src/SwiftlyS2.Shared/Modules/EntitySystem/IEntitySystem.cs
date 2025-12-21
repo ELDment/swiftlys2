@@ -30,6 +30,13 @@ public interface IEntitySystemService
     public delegate void EntityOutputEventHandler( IOnEntityFireOutputHookEvent @event );
 
     /// <summary>
+    /// Represents a method that handles an entity input event, allowing custom logic to be executed when an entity
+    /// accepts an input.
+    /// </summary>
+    /// <param name="event">The event that was triggered.</param>
+    public delegate void EntityInputEventHandler( IOnEntityIdentityAcceptInputHookEvent @event );
+
+    /// <summary>
     /// Create an entity by class.
     /// </summary>
     /// <typeparam name="T">Entity type.</typeparam>
@@ -129,4 +136,33 @@ public interface IEntitySystemService
     /// <param name="guid">The unique identifier of the entity output to unhook.</param>
     /// <returns><see langword="true"/> if the hook was successfully removed; otherwise, <see langword="false"/>.</returns>
     public bool UnhookEntityOutput( Guid guid );
+
+    /// <summary>
+    /// Hooks an input of the specified entity type to a callback function.
+    /// </summary>
+    /// <remarks>This method allows you to attach a handler to a specific input of an entity. The callback will
+    /// be invoked whenever the input is accepted.</remarks>
+    /// <typeparam name="T">The type of the entity, which must implement <see cref="ISchemaClass{T}"/>.</typeparam>
+    /// <param name="inputName">The name of the input to hook. This value cannot be <see langword="null"/> or empty.</param>
+    /// <param name="callback">The callback function to invoke when the input is accepted. This value cannot be <see langword="null"/>.</param>
+    /// <returns>A <see cref="Guid"/> that uniquely identifies the hook. This identifier can be used to remove the hook.</returns>
+    public Guid HookEntityInput<T>( string inputName, EntityInputEventHandler callback ) where T : class, ISchemaClass<T>;
+
+    /// <summary>
+    /// Hooks an input of the specified entity type to a callback function.
+    /// </summary>
+    /// <remarks>This method allows you to attach a handler to a specific input of an entity. The callback will
+    /// be invoked whenever the input is accepted.</remarks>
+    /// <param name="designerName">The designer name of the entity to hook. This value cannot be <see langword="null"/> or empty.</param>
+    /// <param name="inputName">The name of the input to hook. This value cannot be <see langword="null"/> or empty.</param>
+    /// <param name="callback">The callback function to invoke when the input is accepted. This value cannot be <see langword="null"/>.</param>
+    /// <returns>A <see cref="Guid"/> that uniquely identifies the hook. This identifier can be used to remove the hook.</returns>
+    public Guid HookEntityInput( string designerName, string inputName, EntityInputEventHandler callback );
+
+    /// <summary>
+    /// Removes the association between the specified entity input and its handler.
+    /// </summary>
+    /// <param name="guid">The unique identifier of the entity input to unhook.</param>
+    /// <returns><see langword="true"/> if the hook was successfully removed; otherwise, <see langword="false"/>.</returns>
+    public bool UnhookEntityInput( Guid guid );
 }
