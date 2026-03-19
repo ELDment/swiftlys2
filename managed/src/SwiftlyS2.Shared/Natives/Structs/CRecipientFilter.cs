@@ -1,5 +1,4 @@
 ﻿using System.Runtime.InteropServices;
-using SwiftlyS2.Core.Natives;
 
 namespace SwiftlyS2.Shared.Natives;
 
@@ -22,7 +21,8 @@ public struct CRecipientFilter
     public bool DisabledPrediction;
 
 
-    public CRecipientFilter( ) : this(NetChannelBufType_t.BUF_RELIABLE, false) {
+    public CRecipientFilter() : this(NetChannelBufType_t.BUF_RELIABLE, false)
+    {
 
     }
 
@@ -36,8 +36,9 @@ public struct CRecipientFilter
 
     public static CRecipientFilter FromMask( ulong playerMask )
     {
-        CRecipientFilter filter = new();
-        filter.RecipientsMask = playerMask;
+        CRecipientFilter filter = new() {
+            RecipientsMask = playerMask
+        };
         return filter;
     }
 
@@ -89,8 +90,8 @@ public struct CRecipientFilter
 
     public int GetRecipientCount()
     {
-        int count = 0;
-        for (int i = 0; i < 64; i++)
+        var count = 0;
+        for (var i = 0; i < 64; i++)
         {
             if ((RecipientsMask & (1UL << i)) != 0)
             {
@@ -163,13 +164,8 @@ internal static class CRecipientFilterVtable
         vtable[1] = (nint)(delegate* unmanaged< CRecipientFilter*, NetChannelBufType_t >)(&GetNetworkBufType);
         vtable[2] = (nint)(delegate* unmanaged< CRecipientFilter*, bool >)(&IsInitMessage);
         vtable[3] = (nint)(delegate* unmanaged< CRecipientFilter*, ulong* >)(&GetRecipients);
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            vtable[4] = (nint)(delegate* unmanaged< CRecipientFilter*, int*, int* >)(&GetPredictedSlotWindows);
-        }
-        else
-        {
-            vtable[4] = (nint)(delegate* unmanaged< CRecipientFilter*, int >)(&GetPredictedSlotLinux);
-        }
+        vtable[4] = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+            ? (nint)(delegate* unmanaged< CRecipientFilter*, int*, int* >)(&GetPredictedSlotWindows)
+            : (nint)(delegate* unmanaged< CRecipientFilter*, int >)(&GetPredictedSlotLinux);
     }
 }

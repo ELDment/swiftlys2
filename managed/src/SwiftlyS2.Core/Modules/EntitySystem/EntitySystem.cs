@@ -4,7 +4,6 @@ using SwiftlyS2.Core.Natives;
 using SwiftlyS2.Shared.Events;
 using SwiftlyS2.Shared.Natives;
 using SwiftlyS2.Shared.Schemas;
-using SwiftlyS2.Core.Extensions;
 using SwiftlyS2.Shared.EntitySystem;
 using SwiftlyS2.Core.SchemaDefinitions;
 using SwiftlyS2.Shared.SchemaDefinitions;
@@ -17,7 +16,7 @@ internal class EntitySystemService : IEntitySystemService, IDisposable
 
     private readonly ConcurrentDictionary<Guid, EventDelegates.OnEntityFireOutputHookEvent> outputHooks = new();
     private readonly ConcurrentDictionary<Guid, EventDelegates.OnEntityIdentityAcceptInputHook> inputHooks = new();
-
+    private CCSGameRulesImpl cachedGameRules = new(0);
     private volatile bool disposed;
 
     public EntitySystemService( IEventSubscriber eventSubscriber )
@@ -51,11 +50,10 @@ internal class EntitySystemService : IEntitySystemService, IDisposable
     {
         ThrowIfEntitySystemInvalid();
         var handle = NativeEntitySystem.CreateEntityByName(designerName);
-        var entity = EntityManager.OnEntityCreated(handle);
+        if (handle == nint.Zero) throw new ArgumentException($"Failed to create entity by designer name: {designerName}, probably invalid designer name.");
 
-        return handle == nint.Zero
-            ? throw new ArgumentException($"Failed to create entity by designer name: {designerName}, probably invalid designer name.")
-            : entity;
+        var entity = EntityManager.OnEntityCreated(handle);
+        return entity;
     }
 
     public CHandle<T> GetRefEHandle<T>( T entity ) where T : class, ISchemaClass<T>
@@ -67,8 +65,8 @@ internal class EntitySystemService : IEntitySystemService, IDisposable
     public CCSGameRules? GetGameRules()
     {
         ThrowIfEntitySystemInvalid();
-        var handle = NativeEntitySystem.GetGameRules();
-        return handle.IsValidPtr() ? new CCSGameRulesImpl(handle) : null;
+        cachedGameRules.DangerousSetHandle(NativeEntitySystem.GetGameRules());
+        return cachedGameRules;
     }
 
     public IEnumerable<CEntityInstance> GetAllEntities()
@@ -91,12 +89,10 @@ internal class EntitySystemService : IEntitySystemService, IDisposable
     public T? GetEntityByIndex<T>( uint index ) where T : class, ISchemaClass<T>
     {
         var ent = GetEntityByIndex(index);
-        if (ent is null)
-        {
-            return null;
-        }
 
-        return ent is T e
+        return ent is null
+            ? null
+            : ent is T e
             ? e
             : throw new InvalidOperationException($"Invalid entity type. Requested: {typeof(T).Name}, Actual: {ent!.GetType().Name}.");
     }
@@ -276,18 +272,11 @@ internal class EntitySystemService : IEntitySystemService, IDisposable
     public T? GetEntityByAddress<T>( nint address ) where T : class, ISchemaClass<T>
     {
         var ent = GetEntityByAddress(address);
-        if (ent is null)
-        {
-            return null;
-        }
-        if (ent is T e)
-        {
-            return e;
-        }
-        else
-        {
-            throw new InvalidOperationException($"Invalid entity type. Requested: {typeof(T).Name}, Actual: {ent!.GetType().Name}.");
-        }
+        return ent is null
+            ? null
+            : ent is T e
+            ? e
+            : throw new InvalidOperationException($"Invalid entity type. Requested: {typeof(T).Name}, Actual: {ent!.GetType().Name}.");
     }
 
     public CEntityInstance? GetEntityByAddress( nint address )

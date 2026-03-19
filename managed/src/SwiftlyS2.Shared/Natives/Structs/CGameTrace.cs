@@ -1,9 +1,9 @@
 using System.Runtime.InteropServices;
-using SwiftlyS2.Core.Players;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.Schemas;
 using SwiftlyS2.Core.SchemaDefinitions;
 using SwiftlyS2.Shared.SchemaDefinitions;
+using SwiftlyS2.Core.EntitySystem;
 
 namespace SwiftlyS2.Shared.Natives;
 
@@ -54,7 +54,7 @@ public unsafe struct CGameTrace
     public bool StartInSolid;
     public bool ExactHitPoint;
 
-    public readonly CEntityInstance Entity => new CEntityInstanceImpl((nint)pEntity);
+    public readonly CEntityInstance Entity => EntityManager.GetEntityByAddress((nint)pEntity) ?? new CEntityInstanceImpl((nint)pEntity);
 
     public readonly bool DidHit => Fraction < 1.0f || StartInSolid;
     public readonly float Distance => EndPos.Distance(StartPos);
@@ -66,7 +66,7 @@ public unsafe struct CGameTrace
         }
     }
 
-    public readonly bool HitEntityByDesignerName<T>( string designerName, out T outEntity, NameMatchType matchType = NameMatchType.StartsWith ) where T : ISchemaClass<T>
+    public readonly bool HitEntityByDesignerName<T>( string designerName, out T outEntity, NameMatchType matchType = NameMatchType.StartsWith ) where T : class, ISchemaClass<T>
     {
         outEntity = T.From(IntPtr.Zero);
 
@@ -102,7 +102,7 @@ public unsafe struct CGameTrace
         return isMatch;
     }
 
-    public readonly bool HitEntityByDesignerName<T>( string designerName, NameMatchType matchType = NameMatchType.StartsWith ) where T : ISchemaClass<T>
+    public readonly bool HitEntityByDesignerName<T>( string designerName, NameMatchType matchType = NameMatchType.StartsWith ) where T : class, ISchemaClass<T>
     {
         return HitEntityByDesignerName<T>(designerName, out _, matchType);
     }
@@ -142,13 +142,13 @@ public unsafe struct CGameTrace
         return HitPlayer(out _);
     }
 
-    public readonly bool HitEntity<T>( out T entity ) where T : ISchemaClass<T>
+    public readonly bool HitEntity<T>( out T entity ) where T : class, ISchemaClass<T>
     {
         entity = T.From(IntPtr.Zero);
         return T.ClassName != null && HitEntityByDesignerName(T.ClassName, out entity, NameMatchType.Exact);
     }
 
-    public readonly bool HitEntity<T>() where T : ISchemaClass<T>
+    public readonly bool HitEntity<T>() where T : class, ISchemaClass<T>
     {
         return HitEntity<T>(out _);
     }

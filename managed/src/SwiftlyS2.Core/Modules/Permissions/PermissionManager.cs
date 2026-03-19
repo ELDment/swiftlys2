@@ -16,7 +16,7 @@ internal class PermissionManager : IPermissionManager
     private Dictionary<string, List<string>> _temporarySubPermissions = [];
     private List<string> _defaultPermissions = [];
     private ImmutableDictionary<PermissionCacheKey, bool> _queryCache = ImmutableDictionary.Create<PermissionCacheKey, bool>();
-    private object _lock = new();
+    private readonly Lock _lock = new();
 
     public PermissionManager( IOptionsMonitor<PermissionConfig> options, ILogger<PermissionManager> logger )
     {
@@ -32,7 +32,7 @@ internal class PermissionManager : IPermissionManager
             }
             catch (Exception e)
             {
-                if (!GlobalExceptionHandler.Handle(e)) return;
+                if (!GlobalExceptionHandler.Handle(ref e)) return;
                 logger.LogError(e, "Error reloading permission config.");
             }
         });

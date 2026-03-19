@@ -9,6 +9,8 @@ using SwiftlyS2.Core.Scheduler;
 using SwiftlyS2.Shared.Convars;
 using SwiftlyS2.Shared.Natives;
 using SwiftlyS2.Core.Extensions;
+using SwiftlyS2.Shared.NetMessages;
+using SwiftlyS2.Shared.ProtobufDefinitions;
 
 namespace SwiftlyS2.Core.Convars;
 
@@ -19,8 +21,10 @@ internal class ConVar : IConVar
     private readonly ConcurrentDictionary<int, ConVarCallbackDelegate> callbacks = new();
     protected nint MinValuePtrPtr => NativeConvars.GetMinValuePtrPtr(Name);
     protected nint MaxValuePtrPtr => NativeConvars.GetMaxValuePtrPtr(Name);
+    private INetMessageService _netMessageService;
 
-    public EConVarType Type => (EConVarType)NativeConvars.GetConvarType(Name);
+    public EConVarType Type { get; } = EConVarType.EConVarType_Invalid;
+    public nint ValuePtr { get; } = 0;
     public string Name { get; set; }
     public string HelpText => NativeConvars.GetDescription(Name);
     public bool HasDefaultValue => NativeConvars.HasDefaultValue(Name);
@@ -52,10 +56,13 @@ internal class ConVar : IConVar
         set => NativeConvars.SetFlags(Name, (ulong)value);
     }
 
-    internal ConVar( string name )
+    internal ConVar( string name, INetMessageService netMessageService )
     {
         callbacks.Clear();
         Name = name;
+        Type = (EConVarType)NativeConvars.GetConvarType(Name);
+        ValuePtr = NativeConvars.GetValuePtr(Name);
+        _netMessageService = netMessageService;
     }
 
     public void SetInternalAsString( string value )
@@ -133,7 +140,6 @@ internal class ConVar : IConVar
             }
             var value = Marshal.PtrToStringAnsi(valuePtr)!;
 
-            // var convertedValue = (T)Convert.ChangeType(value, typeof(T))!;
             callback(value);
             removeSelf?.Invoke();
         }
@@ -153,7 +159,13 @@ internal class ConVar : IConVar
 
     public void ReplicateToClientAsString( int clientId, string value )
     {
-        _ = SchedulerManager.QueueOrNow(() => NativeConvars.SetClientConvarValueString(clientId, Name, value));
+        _netMessageService.Send<CNETMsg_SetConVar>(( ev ) =>
+        {
+            var cvar = ev.Convars.Cvars.Add();
+            cvar.Name = Name;
+            cvar.Value = value;
+            ev.Recipients.AddRecipient(clientId);
+        });
     }
 
     public bool TryGetDefaultValueAsString( out string defaultValue )
@@ -218,7 +230,7 @@ internal class ConVar<T> : ConVar, IConVar<T>
         set => SetDefaultValue(value);
     }
 
-    internal ConVar( string name ) : base(name)
+    internal ConVar( string name, INetMessageService netMessageService ) : base(name, netMessageService)
     {
         ValidateType();
     }
@@ -328,7 +340,7 @@ internal class ConVar<T> : ConVar, IConVar<T>
     {
         unsafe
         {
-            return Type != EConVarType.EConVarType_String ? *(T*)NativeConvars.GetValuePtr(Name) : (T)(object)(*(CUtlString*)NativeConvars.GetValuePtr(Name)).Value;
+            return Type != EConVarType.EConVarType_String ? *(T*)ValuePtr : (T)(object)(*(CUtlString*)ValuePtr).Value;
         }
     }
 
@@ -342,9 +354,11 @@ internal class ConVar<T> : ConVar, IConVar<T>
             }
             else
             {
-
-                CUtlString str = new() { Value = (string)(object)value };
-                NativeConvars.SetValuePtr(Name, (nint)(&str));
+                if (value is string v)
+                {
+                    CUtlString str = new() { Value = v };
+                    NativeConvars.SetValuePtr(Name, (nint)(&str));
+                }
             }
         }
     }

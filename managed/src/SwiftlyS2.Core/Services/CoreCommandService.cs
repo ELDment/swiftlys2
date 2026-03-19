@@ -35,7 +35,7 @@ internal class CoreCommandService
         {
             var output = string.Join("\n", [
                 $"Connected players: {core.PlayerManager.PlayerCount}/{core.Engine.GlobalVars.MaxClients}",
-                ..core.PlayerManager.GetAllPlayers().Select(player => $"{player.PlayerID}. {player.Controller?.PlayerName}{(player.IsFakeClient ? " (BOT)" : "")} (steamid={player.SteamID})")
+                ..core.PlayerManager.GetAllValidPlayers().Select(player => $"{player.PlayerID}. {player.Controller?.PlayerName}{(player.IsFakeClient ? " (BOT)" : "")} (steamid={player.SteamID})")
             ]);
             logger.LogInformation("{Output}", output);
         }
@@ -161,7 +161,7 @@ internal class CoreCommandService
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
