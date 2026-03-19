@@ -4,6 +4,7 @@ using SwiftlyS2.Shared.Natives;
 using SwiftlyS2.Shared.Schemas;
 using SwiftlyS2.Shared.SchemaDefinitions;
 using EndReason = SwiftlyS2.Shared.Natives.RoundEndReason;
+using SwiftlyS2.Core.EntitySystem;
 
 namespace SwiftlyS2.Core.SchemaDefinitions;
 
@@ -14,19 +15,20 @@ internal partial class CCSGameRulesImpl : CCSGameRules
         set => GamePhase = (int)value;
     }
 
-    public T? FindPickerEntity<T>( CBasePlayerController controller ) where T : ISchemaClass<T>
+    public T? FindPickerEntity<T>( CBasePlayerController controller ) where T : class, ISchemaClass<T>
     {
-        return ((CBaseEntity)new CBaseEntityImpl(GameFunctions.FindPickerEntity(Address, controller.Address))).As<T>();
+        var entityAddress = GameFunctions.FindPickerEntity(Address, controller.Address);
+        return EntityManager.GetEntityByAddress(entityAddress) as T;
     }
 
     public void TerminateRound( EndReason reason, float delay )
     {
-        GameFunctions.TerminateRound(Address, (uint)reason, delay, 0, 0);
+        GameFunctions.TerminateRound(Address, (uint)reason, delay, 0);
     }
 
     public void TerminateRound( EndReason reason, float delay, uint teamId, uint unk01 )
     {
-        GameFunctions.TerminateRound(Address, (uint)reason, delay, teamId, unk01);
+        GameFunctions.TerminateRound(Address, (uint)reason, delay, teamId);
     }
 
     public ref CViewVectors GetViewVectors()

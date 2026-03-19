@@ -81,7 +81,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -107,7 +107,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -138,7 +138,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -166,7 +166,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -193,7 +193,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -233,7 +233,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return 1;
             }
@@ -266,7 +266,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 PlayerManagerService.UnregisterPlayerObject(playerId);
                 return;
@@ -299,7 +299,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -330,7 +330,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -356,7 +356,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -382,7 +382,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -409,7 +409,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -438,7 +438,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -461,8 +461,8 @@ internal static class EventPublisher
         try
         {
             OnEntityParentChangedEvent @event = new() {
-                Entity = new CEntityInstanceImpl(entityPtr),
-                NewParent = newParentPtr != 0 ? new CEntityInstanceImpl(newParentPtr) : null
+                Entity = EntityManager.GetEntityByAddress(entityPtr) ?? new CEntityInstanceImpl(entityPtr),
+                NewParent = newParentPtr != 0 ? EntityManager.GetEntityByAddress(newParentPtr) ?? new CEntityInstanceImpl(newParentPtr) : null
             };
             foreach (var subscriber in subscribers)
             {
@@ -471,7 +471,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -489,7 +489,7 @@ internal static class EventPublisher
 
         try
         {
-            OnEntitySpawnedEvent @event = new() { Entity = new CEntityInstanceImpl(entityPtr) };
+            OnEntitySpawnedEvent @event = new() { Entity = EntityManager.GetEntityByAddress(entityPtr) ?? new CEntityInstanceImpl(entityPtr) };
             foreach (var subscriber in subscribers)
             {
                 subscriber.InvokeOnEntitySpawned(@event);
@@ -497,7 +497,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -523,7 +523,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -549,7 +549,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -575,7 +575,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -595,12 +595,11 @@ internal static class EventPublisher
         {
             unsafe
             {
-                var usercmdPtrs = new ReadOnlySpan<nint>(usercmdsPtr.ToPointer(), numcmds);
-                List<CSGOUserCmdPB> usercmds = [];
-                foreach (var pUsercmd in usercmdPtrs)
+                var usercmdPtrs = (nint*)usercmdsPtr;
+                List<CSGOUserCmdPB> usercmds = new(numcmds);
+                for (var i = 0; i < numcmds; i++)
                 {
-                    var usercmd = new CSGOUserCmdPBImpl(pUsercmd, false);
-                    usercmds.Add(usercmd);
+                    usercmds.Add(new CSGOUserCmdPBImpl(usercmdPtrs[i], false));
                 }
 
                 OnClientProcessUsercmdsEvent @event = new() {
@@ -617,7 +616,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -638,7 +637,7 @@ internal static class EventPublisher
             unsafe
             {
                 OnEntityTakeDamageEvent @event = new() {
-                    Entity = new CEntityInstanceImpl(entityPtr),
+                    Entity = EntityManager.GetEntityByAddress(entityPtr) ?? new CEntityInstanceImpl(entityPtr),
                     _infoPtr = takeDamageInfoPtr,
                     _resultPtr = takeDamageResultPtr
                 };
@@ -661,7 +660,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return 1;
             }
@@ -688,7 +687,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -713,7 +712,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -737,7 +736,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -761,7 +760,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -785,7 +784,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -809,7 +808,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -837,7 +836,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -861,7 +860,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -887,7 +886,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -911,7 +910,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -935,7 +934,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -959,7 +958,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -983,7 +982,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -1007,7 +1006,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }
@@ -1031,7 +1030,7 @@ internal static class EventPublisher
         }
         catch (Exception e)
         {
-            if (!GlobalExceptionHandler.Handle(e))
+            if (!GlobalExceptionHandler.Handle(ref e))
             {
                 return;
             }

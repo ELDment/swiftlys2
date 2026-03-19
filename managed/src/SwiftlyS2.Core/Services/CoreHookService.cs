@@ -78,7 +78,7 @@ internal class CoreHookService : IDisposable
     private delegate nint CBaseEntityTouchTemplate( nint pBaseEntity, nint pOtherEntity );
     private delegate void SteamServerAPIActivated( nint pServer );
     private delegate nint CPlayerMovementServicesRunCommand( nint pMovementServices, nint pUserCmd );
-    private delegate void CCSPlayerPawnPostThink( nint pPlayerPawn );
+    private delegate nint CCSPlayerPawnPostThink( nint pPlayerPawn );
     private delegate void CEntityIdentityAcceptInput( nint pEntityIdentity, nint inputName, nint activator, nint caller, nint variant, int outputId, nint unk1, nint unk2 );
     private delegate void CEntityIOOutputFireOutputInternal( nint pEntityIO, nint pActivator, nint pCaller, nint pVariant, float flDelay, nint unk1, nint unk2 );
     private delegate void DispatchDatamapFunction( nint a1, nint pDatamapFunc, nint a3, uint a4, nint a5, double a6 /* unknown */ );
@@ -253,7 +253,7 @@ internal class CoreHookService : IDisposable
                 return ( pWeaponServices, pPlayerWeapon, swapping ) =>
                 {
                     var weaponServices = core.Memory.ToSchemaClass<CCSPlayer_WeaponServices>(pWeaponServices);
-                    var playerWeapon = pPlayerWeapon != nint.Zero ? core.Memory.ToSchemaClass<CBasePlayerWeapon>(pPlayerWeapon) : null;
+                    var playerWeapon = pPlayerWeapon != nint.Zero ? EntityManager.GetEntityByAddress(pPlayerWeapon) as CBasePlayerWeapon ?? core.Memory.ToSchemaClass<CBasePlayerWeapon>(pPlayerWeapon) : null;
 
                     var @event = new OnWeaponServicesDropWeaponHook {
                         WeaponServices = weaponServices,
@@ -276,7 +276,7 @@ internal class CoreHookService : IDisposable
                 return ( pWeaponServices, pPlayerWeapon, swapping ) =>
                 {
                     var weaponServices = core.Memory.ToSchemaClass<CCSPlayer_WeaponServices>(pWeaponServices);
-                    var playerWeapon = pPlayerWeapon != nint.Zero ? core.Memory.ToSchemaClass<CBasePlayerWeapon>(pPlayerWeapon) : null;
+                    var playerWeapon = pPlayerWeapon != nint.Zero ? EntityManager.GetEntityByAddress(pPlayerWeapon) as CBasePlayerWeapon ?? core.Memory.ToSchemaClass<CBasePlayerWeapon>(pPlayerWeapon) : null;
 
                     var @event = new OnWeaponServicesDropWeaponHook {
                         WeaponServices = weaponServices,
@@ -403,7 +403,7 @@ internal class CoreHookService : IDisposable
                 var result = next()(pWeaponServices, pBasePlayerWeapon);
 
                 var weaponServices = core.Memory.ToSchemaClass<CCSPlayer_WeaponServices>(pWeaponServices);
-                var basePlayerWeapon = core.Memory.ToSchemaClass<CCSWeaponBase>(pBasePlayerWeapon);
+                var basePlayerWeapon = EntityManager.GetEntityByAddress(pBasePlayerWeapon) as CCSWeaponBase ?? core.Memory.ToSchemaClass<CCSWeaponBase>(pBasePlayerWeapon);
 
                 var @event = new OnWeaponServicesCanUseHookEvent {
                     WeaponServices = weaponServices,
@@ -433,9 +433,13 @@ internal class CoreHookService : IDisposable
         {
             return ( pBaseEntity, pOtherEntity ) =>
             {
-                var entity = core.Memory.ToSchemaClass<CBaseEntity>(pBaseEntity);
-                var otherEntity = core.Memory.ToSchemaClass<CBaseEntity>(pOtherEntity);
-                EventPublisher.InvokeOnEntityStartTouch(new OnEntityStartTouchEvent { Entity = entity, OtherEntity = otherEntity });
+                var entity = EntityManager.GetEntityByAddress(pBaseEntity) as CBaseEntity;
+                var otherEntity = EntityManager.GetEntityByAddress(pOtherEntity) as CBaseEntity;
+                using var @event = new OnEntityStartTouchEvent {
+                    Entity = entity ?? core.Memory.ToSchemaClass<CBaseEntity>(pBaseEntity),
+                    OtherEntity = otherEntity ?? core.Memory.ToSchemaClass<CBaseEntity>(pOtherEntity)
+                };
+                EventPublisher.InvokeOnEntityStartTouch(@event);
                 return next()(pBaseEntity, pOtherEntity);
             };
         });
@@ -444,9 +448,13 @@ internal class CoreHookService : IDisposable
         {
             return ( pBaseEntity, pOtherEntity ) =>
             {
-                var entity = core.Memory.ToSchemaClass<CBaseEntity>(pBaseEntity);
-                var otherEntity = core.Memory.ToSchemaClass<CBaseEntity>(pOtherEntity);
-                EventPublisher.InvokeOnEntityTouch(new OnEntityTouchEvent { Entity = entity, OtherEntity = otherEntity });
+                var entity = EntityManager.GetEntityByAddress(pBaseEntity) as CBaseEntity;
+                var otherEntity = EntityManager.GetEntityByAddress(pOtherEntity) as CBaseEntity;
+                using var @event = new OnEntityTouchEvent {
+                    Entity = entity ?? core.Memory.ToSchemaClass<CBaseEntity>(pBaseEntity),
+                    OtherEntity = otherEntity ?? core.Memory.ToSchemaClass<CBaseEntity>(pOtherEntity)
+                };
+                EventPublisher.InvokeOnEntityTouch(@event);
                 return next()(pBaseEntity, pOtherEntity);
             };
         });
@@ -455,9 +463,13 @@ internal class CoreHookService : IDisposable
         {
             return ( pBaseEntity, pOtherEntity ) =>
             {
-                var entity = core.Memory.ToSchemaClass<CBaseEntity>(pBaseEntity);
-                var otherEntity = core.Memory.ToSchemaClass<CBaseEntity>(pOtherEntity);
-                EventPublisher.InvokeOnEntityEndTouch(new OnEntityEndTouchEvent { Entity = entity, OtherEntity = otherEntity });
+                var entity = EntityManager.GetEntityByAddress(pBaseEntity) as CBaseEntity;
+                var otherEntity = EntityManager.GetEntityByAddress(pOtherEntity) as CBaseEntity;
+                using var @event = new OnEntityEndTouchEvent {
+                    Entity = entity ?? core.Memory.ToSchemaClass<CBaseEntity>(pBaseEntity),
+                    OtherEntity = otherEntity ?? core.Memory.ToSchemaClass<CBaseEntity>(pOtherEntity)
+                };
+                EventPublisher.InvokeOnEntityEndTouch(@event);
                 return next()(pBaseEntity, pOtherEntity);
             };
         });
@@ -497,7 +509,7 @@ internal class CoreHookService : IDisposable
                 var userCmdPb = new CSGOUserCmdPBImpl(pUserCmd + 0x10, false);
                 var buttonState = new CInButtonStateImpl(pUserCmd + 0x58);
 
-                var @event = new OnMovementServicesRunCommandHookEvent {
+                using var @event = new OnMovementServicesRunCommandHookEvent {
                     MovementServices = movementService,
                     ButtonState = buttonState,
                     UserCmdPB = userCmdPb
@@ -521,14 +533,14 @@ internal class CoreHookService : IDisposable
         {
             return ( pPlayerPawn ) =>
             {
-                var playerPawn = core.Memory.ToSchemaClass<CCSPlayerPawn>(pPlayerPawn);
+                var playerPawn = EntityManager.GetEntityByAddress(pPlayerPawn) as CCSPlayerPawn;
 
-                var @event = new OnPlayerPawnPostThinkHookEvent {
-                    PlayerPawn = playerPawn
+                using var @event = new OnPlayerPawnPostThinkHookEvent {
+                    PlayerPawn = playerPawn ?? core.Memory.ToSchemaClass<CCSPlayerPawn>(pPlayerPawn)
                 };
                 EventPublisher.InvokeOnPlayerPawnPostThinkHook(@event);
 
-                next()(pPlayerPawn);
+                return next()(pPlayerPawn);
             };
         });
     }
@@ -552,7 +564,7 @@ internal class CoreHookService : IDisposable
                 }
                 catch (Exception e)
                 {
-                    if (!GlobalExceptionHandler.Handle(e)) return;
+                    if (!GlobalExceptionHandler.Handle(ref e)) return;
                     AnsiConsole.WriteException(e);
                 }
             };
