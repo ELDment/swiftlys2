@@ -488,6 +488,56 @@ public class TestPlugin : BasePlugin
         //     @event.Result = HookResult.Stop;
         // };
 
+        _ = Core.Command.RegisterCommand("takedmg", ( ctx ) =>
+        {
+            ctx.Sender!.TakeDamage(69f, DamageTypes_t.DMG_BULLET, ctx.Sender!.Pawn, ctx.Sender!.Pawn);
+        });
+
+        Core.GameHooks.Entities.TakeDamage.Pre += ( ref ctx ) =>
+        {
+            Console.WriteLine("DamageForce " + ctx.Params.Info.DamageForce.ToString());
+            Console.WriteLine("DamagePosition " + ctx.Params.Info.DamagePosition.ToString());
+            Console.WriteLine("ReportedPosition " + ctx.Params.Info.ReportedPosition.ToString());
+            Console.WriteLine("DamageDirection " + ctx.Params.Info.DamageDirection.ToString());
+            Console.WriteLine("Damage " + ctx.Params.Info.Damage.ToString());
+            Console.WriteLine("TotalledDamage " + ctx.Params.Info.TotalledDamage.ToString());
+            Console.WriteLine("DamageType " + ctx.Params.Info.DamageType.ToString());
+            Console.WriteLine("DamageCustom " + ctx.Params.Info.DamageCustom.ToString());
+            Console.WriteLine("AmmoType " + ctx.Params.Info.AmmoType.ToString());
+            Console.WriteLine("OriginalDamage " + ctx.Params.Info.OriginalDamage.ToString());
+            Console.WriteLine("ShouldBleed " + ctx.Params.Info.ShouldBleed.ToString());
+            Console.WriteLine("ShouldSpark " + ctx.Params.Info.ShouldSpark.ToString());
+            Console.WriteLine("DamageFlags " + ctx.Params.Info.DamageFlags.ToString());
+            Console.WriteLine("NumObjectsPenetrated " + ctx.Params.Info.NumObjectsPenetrated.ToString());
+            Console.WriteLine("FriendlyFireDamageReductionRatio " + ctx.Params.Info.FriendlyFireDamageReductionRatio.ToString());
+            Console.WriteLine("StoppedBullet " + ctx.Params.Info.StoppedBullet.ToString());
+            Console.WriteLine("===========================================================");
+
+            ctx.Params.Info.Damage = 69f;
+
+            Console.WriteLine("DamageForce " + ctx.Params.Info.DamageForce.ToString());
+            Console.WriteLine("DamagePosition " + ctx.Params.Info.DamagePosition.ToString());
+            Console.WriteLine("ReportedPosition " + ctx.Params.Info.ReportedPosition.ToString());
+            Console.WriteLine("DamageDirection " + ctx.Params.Info.DamageDirection.ToString());
+            Console.WriteLine("Damage " + ctx.Params.Info.Damage.ToString());
+            Console.WriteLine("TotalledDamage " + ctx.Params.Info.TotalledDamage.ToString());
+            Console.WriteLine("DamageType " + ctx.Params.Info.DamageType.ToString());
+            Console.WriteLine("DamageCustom " + ctx.Params.Info.DamageCustom.ToString());
+            Console.WriteLine("AmmoType " + ctx.Params.Info.AmmoType.ToString());
+            Console.WriteLine("OriginalDamage " + ctx.Params.Info.OriginalDamage.ToString());
+            Console.WriteLine("ShouldBleed " + ctx.Params.Info.ShouldBleed.ToString());
+            Console.WriteLine("ShouldSpark " + ctx.Params.Info.ShouldSpark.ToString());
+            Console.WriteLine("DamageFlags " + ctx.Params.Info.DamageFlags.ToString());
+            Console.WriteLine("NumObjectsPenetrated " + ctx.Params.Info.NumObjectsPenetrated.ToString());
+            Console.WriteLine("FriendlyFireDamageReductionRatio " + ctx.Params.Info.FriendlyFireDamageReductionRatio.ToString());
+            Console.WriteLine("StoppedBullet " + ctx.Params.Info.StoppedBullet.ToString());
+
+            unsafe
+            {
+                if ((nint)ctx.Params.DamageResult != 0) ctx.Params.DamageResult->DamageDealt = 69f;
+            }
+        };
+
         // Core.Event.OnTick += () => {
 
         //   Console.WriteLine("TestPlugin OnTick");
@@ -616,20 +666,20 @@ public class TestPlugin : BasePlugin
         if (targetAddress.HasValue)
         {
             _dispatchspawn = Core.Memory.GetUnmanagedFunctionByAddress<DispatchSpawnDelegate>(targetAddress.Value);
-            _ = _dispatchspawn.AddHook((next) =>
+            _ = _dispatchspawn.AddHook(( next ) =>
             {
-                return (pEntity, pKV) =>
+                return ( pEntity, pKV ) =>
                 {
-                    if(order == 0)
+                    if (order == 0)
                     {
                         sw = Stopwatch.StartNew();
                     }
                     order++;
-                    
+
                     var result = next()(pEntity, pKV);
 
                     order--;
-                    if(order == 0)
+                    if (order == 0)
                     {
                         sw.Stop();
                         Console.WriteLine($"DispatchSpawn took {sw.ElapsedTicks * 1_000_000 / Stopwatch.Frequency} us");
@@ -639,14 +689,14 @@ public class TestPlugin : BasePlugin
                 };
             });
 
-            for(var i = 0; i < 100; i++)
+            for (var i = 0; i < 100; i++)
             {
-                _ = _dispatchspawn.AddHook((next) =>
+                _ = _dispatchspawn.AddHook(( next ) =>
                 {
-                    return (pEntity, pKV) =>
+                    return ( pEntity, pKV ) =>
                     {
                         return next()(pEntity, pKV);
-                    }; 
+                    };
                 });
             }
         }
@@ -1837,18 +1887,18 @@ public class TestPlugin : BasePlugin
     [Command("iue9rg")]
     public void SomethingCommand( ICommandContext context )
     {
-        foreach(var itemidx in a.Values)
+        foreach (var itemidx in a.Values)
         {
-            if(!CSVData.ContainsKey(itemidx))
+            if (!CSVData.ContainsKey(itemidx))
             {
                 _ = CSVData.TryAdd(itemidx, Core.Helpers.GetWeaponCSDataFromKey(itemidx)?.Address ?? 0);
-            } 
+            }
             else
             {
                 var addr = Core.Helpers.GetWeaponCSDataFromKey(itemidx)?.Address;
                 var storedAddr = CSVData[itemidx];
 
-                if(addr != storedAddr)
+                if (addr != storedAddr)
                 {
                     Console.WriteLine($"Data mismatch for item index {itemidx}: CSV address = {storedAddr}, current address = {addr}");
                 }
