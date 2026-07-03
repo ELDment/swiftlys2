@@ -491,57 +491,14 @@ public class TestPlugin : BasePlugin
         _ = Core.Command.RegisterCommand("takedmg", ( ctx ) =>
         {
             ctx.Sender!.TakeDamage(69f, DamageTypes_t.DMG_BULLET, ctx.Sender!.Pawn, ctx.Sender!.Pawn);
+            ctx.Sender!.SendCenterHTML("hello there");
         });
 
-        Core.GameHooks.Entities.TakeDamage.Pre += ( ref ctx ) =>
+        Core.GameHooks.Entities.TakeDamage.Post += ( ref ctx ) =>
         {
-            Console.WriteLine("DamageForce " + ctx.Params.Info.DamageForce.ToString());
-            Console.WriteLine("DamagePosition " + ctx.Params.Info.DamagePosition.ToString());
-            Console.WriteLine("ReportedPosition " + ctx.Params.Info.ReportedPosition.ToString());
-            Console.WriteLine("DamageDirection " + ctx.Params.Info.DamageDirection.ToString());
-            Console.WriteLine("Damage " + ctx.Params.Info.Damage.ToString());
-            Console.WriteLine("TotalledDamage " + ctx.Params.Info.TotalledDamage.ToString());
-            Console.WriteLine("DamageType " + ctx.Params.Info.DamageType.ToString());
-            Console.WriteLine("DamageCustom " + ctx.Params.Info.DamageCustom.ToString());
-            Console.WriteLine("AmmoType " + ctx.Params.Info.AmmoType.ToString());
-            Console.WriteLine("OriginalDamage " + ctx.Params.Info.OriginalDamage.ToString());
-            Console.WriteLine("ShouldBleed " + ctx.Params.Info.ShouldBleed.ToString());
-            Console.WriteLine("ShouldSpark " + ctx.Params.Info.ShouldSpark.ToString());
-            Console.WriteLine("DamageFlags " + ctx.Params.Info.DamageFlags.ToString());
-            Console.WriteLine("NumObjectsPenetrated " + ctx.Params.Info.NumObjectsPenetrated.ToString());
-            Console.WriteLine("FriendlyFireDamageReductionRatio " + ctx.Params.Info.FriendlyFireDamageReductionRatio.ToString());
-            Console.WriteLine("StoppedBullet " + ctx.Params.Info.StoppedBullet.ToString());
-            Console.WriteLine("===========================================================");
-
-            ctx.Params.Info.Damage = 69f;
-
-            Console.WriteLine("DamageForce " + ctx.Params.Info.DamageForce.ToString());
-            Console.WriteLine("DamagePosition " + ctx.Params.Info.DamagePosition.ToString());
-            Console.WriteLine("ReportedPosition " + ctx.Params.Info.ReportedPosition.ToString());
-            Console.WriteLine("DamageDirection " + ctx.Params.Info.DamageDirection.ToString());
-            Console.WriteLine("Damage " + ctx.Params.Info.Damage.ToString());
-            Console.WriteLine("TotalledDamage " + ctx.Params.Info.TotalledDamage.ToString());
-            Console.WriteLine("DamageType " + ctx.Params.Info.DamageType.ToString());
-            Console.WriteLine("DamageCustom " + ctx.Params.Info.DamageCustom.ToString());
-            Console.WriteLine("AmmoType " + ctx.Params.Info.AmmoType.ToString());
-            Console.WriteLine("OriginalDamage " + ctx.Params.Info.OriginalDamage.ToString());
-            Console.WriteLine("ShouldBleed " + ctx.Params.Info.ShouldBleed.ToString());
-            Console.WriteLine("ShouldSpark " + ctx.Params.Info.ShouldSpark.ToString());
-            Console.WriteLine("DamageFlags " + ctx.Params.Info.DamageFlags.ToString());
-            Console.WriteLine("NumObjectsPenetrated " + ctx.Params.Info.NumObjectsPenetrated.ToString());
-            Console.WriteLine("FriendlyFireDamageReductionRatio " + ctx.Params.Info.FriendlyFireDamageReductionRatio.ToString());
-            Console.WriteLine("StoppedBullet " + ctx.Params.Info.StoppedBullet.ToString());
-
-            unsafe
-            {
-                if ((nint)ctx.Params.DamageResult != 0) ctx.Params.DamageResult->DamageDealt = 69f;
-            }
+            var player = (ctx.Params.Info.Attacker.Value as CCSPlayerPawn)!.ToPlayer()!;
+            Console.WriteLine($"TakeDamage Post - {player.Name} - {player.PressedButtons}");
         };
-
-        // Core.Event.OnTick += () => {
-
-        //   Console.WriteLine("TestPlugin OnTick");
-        // };
 
         // Core.Event.OnEntityCreated += (ev) => {
         //   var entity = ev.Entity;
