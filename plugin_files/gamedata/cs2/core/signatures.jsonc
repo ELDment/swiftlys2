@@ -148,7 +148,7 @@
     // Enter in that function, and you'll find a function called outside of any block with 6 arguments, enter in it and in there it's the 2nd function being called
     "TracePlayerBBox": {
         "lib": "server",
-        "windows": "48 89 74 24 ? 55 57 41 54 41 55 41 56 48 8D AC 24",
+        "windows": "48 8B C4 4C 89 40 ? 55 53 57",
         "linux": "55 4D 89 CA 48 89 E5 41 57 49 89 CF"
     },
     // Find string 'Physics/TraceShape (Server)'
