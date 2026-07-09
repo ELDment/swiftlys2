@@ -5,7 +5,7 @@ namespace SwiftlyS2.Core.GameHooks;
 
 internal static partial class GameHooksPublisher
 {
-    private delegate byte CCSPlayerMovementServicesCheckVelocity( nint movementServices, nint moveData, nint unknown );
+    private delegate void CCSPlayerMovementServicesCheckVelocity( nint movementServices, nint moveData, nint unknown );
 
     internal static Guid HookCheckVelocity()
     {
@@ -24,7 +24,11 @@ internal static partial class GameHooksPublisher
                 dummy.DangerousSetHandle(movementServices);
                 var player = dummy.ToPlayer();
                 _pawnComponentPool.Return(dummy);
-                if (player == null) { return next()(movementServices, moveData, unknown); }
+                if (player == null)
+                {
+                    next()(movementServices, moveData, unknown);
+                    return;
+                }
 
                 var moveDataImpl = _moveDataPool.Rent();
                 moveDataImpl.Address = moveData;
@@ -41,10 +45,10 @@ internal static partial class GameHooksPublisher
                 {
                     moveDataImpl.Address = 0;
                     _moveDataPool.Return(moveDataImpl);
-                    return 0;
+                    return;
                 }
 
-                var result = next()(movementServices, moveData, unknown);
+                next()(movementServices, moveData, unknown);
 
                 var postCtx = new CheckVelocityMovementPostContext { Params = preCtx.Params };
 
@@ -52,7 +56,7 @@ internal static partial class GameHooksPublisher
 
                 moveDataImpl.Address = 0;
                 _moveDataPool.Return(moveDataImpl);
-                return result;
+                return;
             };
         });
     }
