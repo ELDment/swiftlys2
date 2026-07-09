@@ -924,7 +924,7 @@ public class TestPlugin : BasePlugin
     [Command("dw")]
     public void DropWeaponTest( ICommandContext context )
     {
-        Console.WriteLine(Core.Localizer["test"]);
+        context.Sender!.Pawn.ItemServices.DropActiveItem();
     }
 
     [Command("stats")]
