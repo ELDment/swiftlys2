@@ -494,6 +494,15 @@ public class TestPlugin : BasePlugin
             ctx.Sender!.SendCenterHTML("hello there");
         });
 
+        // CMsgSos
+
+
+        Core.NetMessage.HookServerMessage<CMsgSosStartSoundEvent>((msg) =>
+        {
+            Console.WriteLine(msg.SoundeventHash);
+            return HookResult.Continue;
+        });
+
         Core.GameHooks.Entities.TakeDamage.Post += ( ref ctx ) =>
         {
             var player = (ctx.Params.Info.Attacker.Value as CCSPlayerPawn)!.ToPlayer()!;
@@ -924,7 +933,10 @@ public class TestPlugin : BasePlugin
     [Command("dw")]
     public void DropWeaponTest( ICommandContext context )
     {
-        context.Sender!.Pawn.ItemServices.DropActiveItem();
+        using var se = new SoundEvent();
+        se.Name = "Weapon_AK47.Single";
+        se.Recipients.AddAllPlayers();
+        se.Emit();
     }
 
     [Command("stats")]
@@ -1255,7 +1267,7 @@ public class TestPlugin : BasePlugin
         var pawnHealth = @event.UserIdPlayer.PlayerPawn!.Health;
         var eventHealth = @event.Health;
         Core.PlayerManager.SendChat($"OnPlayerHurt>> pawnHealth[{pawnHealth}], eventHealth[{eventHealth}], ActualHealth[{@event.ActualHealth}], ActualHitGroup[{@event.ActualHitGroup}]");
-        @event.ActualHitGroup = HitGroup_t.HITGROUP_HEAD;
+
         Core.PlayerManager.SendChat($"OnPlayerHurt>> newActualHitGroup[{@event.ActualHitGroup}]");
         return HookResult.Continue;
     }
