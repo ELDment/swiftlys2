@@ -52,6 +52,7 @@ internal static partial class GameHooksPublisher
 
                 moveDataImpl.Address = 0;
                 _moveDataPool.Return(moveDataImpl);
+                return result;
             };
         });
     }
