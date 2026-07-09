@@ -160,7 +160,7 @@ void CConvarManager::Initialize()
         {
             int unlockedCommands = 0;
 
-            ConCommandData* data = cvars->GetConCommandData(ConCommandRef());
+            ConCommandData* data = cvars->GetConCommandData(ConCommandRef().GetAccessIndex());
             for (ConCommandRef ref = ConCommandRef((uint16)0); ref.GetRawData() != data; ref = ConCommandRef(ref.GetAccessIndex() + 1))
             {
                 if (!ref.IsFlagSet(CONVAR_FLAGS_TO_REMOVE)) continue;
